@@ -29,7 +29,8 @@ class MinimalSpanningTree (object):
             mincost, edge = dists.max(), None
             for i in F:
                 for j in Q:
-                    if (cost := dists[i, j]) < mincost:
+                    cost = dists[i, j]
+                    if cost < mincost:
                         mincost, edge = cost, (i,j)
 
             edges.append(edge)
