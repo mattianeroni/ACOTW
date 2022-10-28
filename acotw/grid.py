@@ -1,5 +1,4 @@
 import math 
-import collections 
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt 
@@ -24,7 +23,7 @@ class Cell:
         self.right = None 
 
         # The time windows in which the cell is busy
-        self.windows = collections.deque()
+        self.windows = set()
 
 
     def __repr__(self):
@@ -51,11 +50,15 @@ class Grid:
 
         Y, X = size
 
+        # Nodes ids
+        self.nodes = np.zeros(size)
+
         for x in range(X):
             for y in range(Y):
 
                 # Update the graph
                 G.add_node(node_id)
+                self.nodes[x, y] = node_id
                 pos[node_id] = (x * cell_sizex + cell_sizex / 2, y * cell_sizey + cell_sizey / 2)
 
                 if y > 0:
@@ -63,6 +66,10 @@ class Grid:
                 
                 if x > 0:
                     G.add_edge(node_id, node_id - X, weight=cell_sizex)
+                    if y > 0:
+                        G.add_edge(node_id, node_id - X - 1, weight=math.sqrt(math.pow(cell_sizex,2) + math.pow(cell_sizey,2)))
+                    if y < Y - 1:
+                        G.add_edge(node_id, node_id - X + 1, weight=math.sqrt(math.pow(cell_sizex,2) + math.pow(cell_sizey,2)))
 
                 node_id += 1
 
@@ -94,6 +101,7 @@ class Grid:
         self.times = np.asarray([ [ _distance(c1, c2) for c2 in self.itercells()] for c1 in self.itercells()]).astype(np.float32).round(3)
 
 
+
     def itercells (self):
         """ To iterate over all the cells """
         return (i for row in self._cells for i in row)
@@ -119,6 +127,7 @@ if __name__ == '__main__':
     grid = Grid( (10, 10), 1, 1)
     cell = grid[1, 2]
     print( cell )
-    print(cell.top, cell.bottom, cell.left, cell.right )
-    print(grid.times[0])
+    print( cell.top, cell.bottom, cell.left, cell.right )
+    #print(grid.times[0])
+    print(grid.nodes)
     grid.plot()
