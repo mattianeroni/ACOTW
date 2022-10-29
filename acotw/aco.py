@@ -8,8 +8,24 @@ import itertools
 
 
 
+class Ant:
+    """ An ant used by the ACO to explore a possible path """
+    def __init__(self, source, target):
+        self.path = collections.deque((source,))
+        self.time = 0.0 
+    
+    @property 
+    def cnode (self):
+        return self.path[-1]
 
-class AntColony (object):
+
+    def add (self, node):
+        self.path.append(node)
+
+
+
+
+class AntColony:
     """
     This is the Ant Colony Optimization algorithm with Warm-Up.
     """
@@ -63,20 +79,18 @@ class AntColony (object):
 
 
     def reset (self):
-        """
-        This method resets the algorithm.
-        """
+        """ This method resets the algorithm """
         # Initialize the best
-        self.best = list(self.picking_list)
-        random.shuffle(self.best)
-        self.vbest = _compute_distance (self.best, self.distances)
+        self.best = None
+        self.vbest = float('inf')
 
         # Initialize the pheromone
-        self.pheromone = self.saved_pheromone.copy()
+        self.pheromone = np.full(self.grid.times.shape, self.pher_init)
+        np.fill_diagonal(self.pheromone, 0)
 
         # Initialize the history and the number of iterations needed to find the best
         # and other statistics.
-        self.history = collections.deque((self.vbest,))
+        self.history = collections.deque()
         self.computations = 0
         self.computational_time = 0.0
 
@@ -114,16 +128,19 @@ class AntColony (object):
 
         where n(i, j) is:
 
-        n(i, j) = Q / ( d(s) + d(t) + )
+        n(i, j) = Q / ( d(s) + d(t) + w(j) + )
 
         where d(s) and d(t) are the distances as the crow flies between j and source
-        and target nodes relatively, while 
+        and target nodes relatively, while w(j) is the idle time the AGV would have 
+        to wait before entering node j (because of busy time window), and 
 
         :param path: Set of nodes already covered by the current ant.
         :return: The selected node.
 
         """
-
+        cnode = path[-1]
+        options = 
+        return 
         prob = 0.0
         r = random.random()
         options.sort(key=operator.itemgetter(1), reverse=True)
