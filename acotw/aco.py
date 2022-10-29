@@ -139,7 +139,7 @@ class AntColony:
 
         """
         cnode = path[-1]
-        options = 
+        options = ...
         return 
         prob = 0.0
         r = random.random()
