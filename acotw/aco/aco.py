@@ -2,26 +2,12 @@ import random
 import numpy as np
 import time
 import operator
-import collections
 import itertools
 
+from acotw.utils.distances import euclidean_from_ids
+from acotw.utils.angle import turn 
 
-
-
-class Ant:
-    """ An ant used by the ACO to explore a possible path """
-    def __init__(self, source, target):
-        self.path = collections.deque((source,))
-        self.time = 0.0 
-    
-    @property 
-    def cnode (self):
-        return self.path[-1]
-
-
-    def add (self, node):
-        self.path.append(node)
-
+from .ants import Ant 
 
 
 
@@ -30,7 +16,7 @@ class AntColony:
     This is the Ant Colony Optimization algorithm with Warm-Up.
     """
     def __init__ (self, grid, source, target,
-                pher_init = 0.1, ro = 0.5, Q = 5.0, alpha = 1.0, beta = 5.0,
+                pher_init = 0.1, ro = 0.5, Q = 5.0, alpha = 1.0, beta = 5.0, phi=0.0,
                 evaporate = False, max_iter = 3000, max_noimp = 1000):
         """
         Initialize.
@@ -40,14 +26,22 @@ class AntColony:
         :param target: The target node where the AGV is going.
 
         :param ro: A parameter that defines the evaporation of the pheromone.
+
         :param Q: A parameter that defines the increment of the pheromone on
                 the new best path.
+
         :param alpha, beta: Parameters of the empirical distribution used to
                             select the next node at each step.
+
+        :param phi: Penalty given to turns during the selection of next node.
+
         :param evaporate: If TRUE the pheromone evaporates at every iteration,
                         otherwise only when a better best solution is found.
+
         :param max_iter: The number of iterations.
+
         :param max_noimp: Maximum number of iterations without improvement.
+
         :param pher_init: The initial pheromone (it is always 0 on arcs (i,j) where i == j).
 
         """
@@ -110,7 +104,54 @@ class AntColony:
         self.pheromone[self.best[-1], 0] += (self.Q / self.distances[self.best[-1], 0])
 
 
-    def _next_node (self, path):
+    def _probability (self, ant, nextnode):
+        """
+        Method to compute the desirability of nextnode.
+
+        Given j a possible next node, and i the current node, the desirability p(i,j) is 
+        computed as:
+
+        p(i,j) = ph(i, j)^alpha * n(i,j)^beta / sum[k](ph(i, k)^alpha * n(i,k)^beta)
+
+        where n(i, j) is:
+
+        n(i, j) = Q / ( d(j, s) + d(j, t) + w(i, j) + phi * turn(i, j) )
+
+        where d(j, s) and d(j, t) are the distances as the crow flies between j and source
+        and target nodes relatively, while w(i, j) is the idle time the AGV would have 
+        to wait before entering node j (because of a busy time window), turn (i, j)
+        is the turn the AGV has to do to reach node j, and phi is the penalty assigned 
+        tu turns.
+        """
+        # Move useful variables to the stack
+        pheromone, grid, alpha, beta, Q, phi = self.pheromone, self.grid, self.alpha, self.beta, self.Q, self.phi
+        source, target, ctime, cnode, oldnode = ant.source, ant.target, ant.time, ant.cnode, ant.oldnode
+
+        # Compute euclidean distances between next node and source / target
+        ds = euclidean_from_ids(grid, nextnode, source)
+        dt = euclidean_from_ids(grid, nextnode, target)
+
+        # Estimate arrival time at next node
+        arrival_at_nextnode = ctime + grid.times[cnode, nextnode]
+
+        # Get eventually interested busy time window on next node
+        time_windows = grid.G.nodes[nextnode]["windows"]
+        window = next((i for i in time_windows if i[0] <= arrival_at_nextnode and i[1] > arrival_at_nextnode), None)
+
+        # Time the ant has to wait to see next node available
+        wait = 0.0 if not window else window[1] - arrival_at_nextnode
+
+        # Compute the turn 
+        turn = 0.0 if not oldnode else turn(grid.pos[oldnode], grid.pos[cnode], grid.pos[nextnode])
+
+        # Compute n(i, j)
+        ni = Q / ( ds + dt + wait + phi * turn)
+
+        # Return the desirability
+        return pheromone[cnode, nextnode]**alpha * ni**beta
+
+
+    def _next_node (self, ant):
         """
         This method returns the next node during the constructing process that
         brings to a new solution.
@@ -120,68 +161,27 @@ class AntColony:
         of the path are excluded.
 
         Given the set of possible next nodes/cells (i.e., i, j), the next node is 
-        chosen through a roulette wheel according to their desirability. Given j a 
-        possible next node, and i the current node, the desirability p(i,j) is 
-        computed as:
+        chosen through a roulette wheel according to their desirability. 
 
-        p(i,j) = ph(i, j)^alpha * n(i,j)^beta / sum[k](ph(i, k)^alpha * n(i,k)^beta)
-
-        where n(i, j) is:
-
-        n(i, j) = Q / ( d(s) + d(t) + w(j) + )
-
-        where d(s) and d(t) are the distances as the crow flies between j and source
-        and target nodes relatively, while w(j) is the idle time the AGV would have 
-        to wait before entering node j (because of busy time window), and 
-
-        :param path: Set of nodes already covered by the current ant.
+        :param ant: The Ant instance currently used to explore a new path.
         :return: The selected node.
 
         """
-        cnode = path[-1]
-        options = ...
-        return 
-        prob = 0.0
-        r = random.random()
-        options.sort(key=operator.itemgetter(1), reverse=True)
-        total = sum(desirability for _, desirability in options)
-
-        for op, desirability in options:
-            prob += desirability / total
-            if r < prob:
-                return op
-        return -1
+        # Move useful variables to the stack
+        grid, G, tabu = self.grid, self.grid.G, set(ant.path) 
+        # Choose next node
+        options = {i: self._probability(ant, i) for _, i in G.edges(ant.cnode) if i not in tabu}
+        return random.choices(options.keys(), weights=options.values(), k=1)[0]
 
 
     def _new_solution (self):
-        """
-        This method construct node by node a new solution.
-        """
-        c_node = 0
-        new_sol, vnew_sol = [], 0
-        options = list(self.picking_list)
-
-        for i in range (len(self.picking_list)):
-            options_params = [(op, self.pheromone[c_node, op]**self.alpha / self.distances[c_node, op]**self.beta) for op in options]
-            n_node = self._next_node (options_params)
-            new_sol.append(n_node)
-            options.remove (n_node)
-            vnew_sol += self.distances[c_node, n_node]
-            c_node = n_node
-        vnew_sol += self.distances[c_node, 0]
-
-        return new_sol, vnew_sol
+        """ Method to explore a new path """
+        pass
 
 
     def run (self, picking_list, verbose = False):
-        """
-        This method represents the execution of the algorithm.
-
-        :param picking_list: The tour of nodes for which the problem must be solved.
-        :param verbose: If TRUE a log takes place every <print_every> iterations.
-        :return: The best solution and its cost.
-
-        """
+        """ Main execution method for the ACO """
+        
         # Initialise the picking list
         self.picking_list = list(picking_list)
         # Initialize the best
