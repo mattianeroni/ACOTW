@@ -25,4 +25,4 @@ def euclidean_from_ids (grid, n1, n2):
     :return: The euclidean distance.
     """
     pos = grid.pos 
-    return euclidean_from_coordinates(pos[n1], po[n2])
+    return euclidean_from_coordinates(pos[n1], pos[n2])

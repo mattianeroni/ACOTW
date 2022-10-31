@@ -1,11 +1,13 @@
 import collections
+import numpy as np 
 
 
 
 class Ant:
     """ An ant used by the ACO to explore a possible path """
-    def __init__(self, source, target):
+    def __init__(self, mapsize, source, target):
         """ 
+        :param mapsize: the size of the times matrix.
         :param source: Id of source node.
         :param target: Id of target node.
 
@@ -13,6 +15,7 @@ class Ant:
         :attr path: The path under construction.
         """
         self.path = collections.deque((source,))
+        self.pathmap = np.zeros(mapsize).astype(np.int32)
         self.source = source 
         self.target = target 
         self.time = 0.0 
@@ -31,8 +34,12 @@ class Ant:
 
     def add (self, node):
         """ Append a new node to the path """
+        cnode = self.cnode 
         self.path.append(node)
+        self.pathmap[cnode, node] = 1
 
     def __iadd__(self, node):
         """ Append a new node to the path using += operator """
+        cnode = self.cnode 
         self.path.append(node)
+        self.pathmap[cnode, node] = 1

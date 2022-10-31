@@ -63,9 +63,13 @@ class Grid:
         ).astype(np.float32).round(3)
 
     
-    def plot (self):
+    def plot (self, path=None):
         """ Plot the grid """
         nx.draw(self.G, pos=self.pos, with_labels=True, font_size=7, font_weight='bold')
+        if path:
+            path_edges = list(zip(path[:-1],path[1:]))
+            nx.draw_networkx_nodes(self.G, self.pos,nodelist=path,node_color='r')
+            nx.draw_networkx_edges(self.G, self.pos,edgelist=path_edges,edge_color='r')
         plt.show()
 
     

@@ -3,7 +3,7 @@ import numpy as np
 
 
 @functools.lru_cache(maxsize=None)
-def turn (oldnode, currentnode, newnode):
+def compute_turn (oldnode, currentnode, newnode):
     """
     Method to calculate the turn / angle in the path moving from 
     currentnode to newnode.

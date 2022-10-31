@@ -2,10 +2,11 @@ import random
 import numpy as np
 import time
 import operator
+import collections 
 import itertools
 
 from acotw.utils.distances import euclidean_from_ids
-from acotw.utils.angle import turn 
+from acotw.utils.angle import compute_turn 
 
 from .ants import Ant 
 
@@ -47,9 +48,12 @@ class AntColony:
         """
         self.grid = grid 
         self.times = grid.times
+        self.source = source 
+        self.target = target
 
         self.ro = ro
         self.Q = Q
+        self.phi = phi
         self.alpha = alpha
         self.beta = beta
         self.evaporate = evaporate
@@ -62,8 +66,8 @@ class AntColony:
         np.fill_diagonal(self.pheromone, 0)
 
         # Initialise a NULL best solution and NULL picking list for the moment
-        self.best = None
-        self.vbest = float("inf")       
+        self.best_ant = None 
+        self.best_time = float("inf")       
 
         # Initialize the history and the number of iterations needed to find the best
         # and other statistics.
@@ -75,8 +79,8 @@ class AntColony:
     def reset (self):
         """ This method resets the algorithm """
         # Initialize the best
-        self.best = None
-        self.vbest = float('inf')
+        self.best_ant = None 
+        self.best_time = float('inf')
 
         # Initialize the pheromone
         self.pheromone = np.full(self.grid.times.shape, self.pher_init)
@@ -96,12 +100,15 @@ class AntColony:
 
 
 
-    def _update (self):
-        """ This method updates the pheromone on the best path """
-        for i in range (len(self.picking_list) - 1):
-            self.pheromone[self.best[i], self.best[i + 1]] += (self.Q / self.distances[self.best[i], self.best[i + 1]])
-        self.pheromone[0, self.best[0]] += (self.Q / self.distances[0, self.best[0]])
-        self.pheromone[self.best[-1], 0] += (self.Q / self.distances[self.best[-1], 0])
+    def _update (self, ant):
+        """ 
+        Method to update the pheromone on the best path 
+        
+        As in the Max-Min Ant System, we update the pheromone only on the best 
+        path, when a new best path is found.
+        """
+        self.pheromone += ant.pathmap * (self.Q / ant.time )
+
 
 
     def _probability (self, ant, nextnode):
@@ -142,10 +149,10 @@ class AntColony:
         wait = 0.0 if not window else window[1] - arrival_at_nextnode
 
         # Compute the turn 
-        turn = 0.0 if not oldnode else turn(grid.pos[oldnode], grid.pos[cnode], grid.pos[nextnode])
+        turn = 0.0 if not oldnode else compute_turn(grid.pos[oldnode], grid.pos[cnode], grid.pos[nextnode])
 
         # Compute n(i, j)
-        ni = Q / ( ds + dt + wait + phi * turn)
+        ni = Q / ( ds + dt + wait + (phi * turn))
 
         # Return the desirability
         return pheromone[cnode, nextnode]**alpha * ni**beta
@@ -169,56 +176,91 @@ class AntColony:
         """
         # Move useful variables to the stack
         grid, G, tabu = self.grid, self.grid.G, set(ant.path) 
+
         # Choose next node
-        options = {i: self._probability(ant, i) for _, i in G.edges(ant.cnode) if i not in tabu}
-        return random.choices(options.keys(), weights=options.values(), k=1)[0]
+
+        options = tuple(i for _, i in G.edges(ant.cnode) if i not in tabu)
+        probs = np.array([self._probability(ant, i) for i in options])
+
+        if len(options) == 0:
+            return None
+        return random.choices( options, weights=probs / probs.sum(), k=1)[0]
 
 
-    def _new_solution (self):
-        """ Method to explore a new path """
-        pass
+    def _new_solution (self, ant):
+        """ Method to explore a new pathconstructed node-by-node """
+        grid, times = self.grid, self.grid.times 
+        cnode, target, _next_node = ant.source, ant.target, self._next_node
+
+        while cnode != target:
+
+            nextnode = _next_node(ant)
+            if not nextnode:
+                return True
+
+            ant.path.append(nextnode)
+
+            arrival_at_nextnode = ant.time + times[cnode, nextnode]
+            window = next((i for i in grid.G.nodes[nextnode]["windows"] if i[0] <= arrival_at_nextnode and i[1] > arrival_at_nextnode), (0, 0))
+
+            ant.time = max(arrival_at_nextnode, window[1])
+            cnode = nextnode
+        return False
 
 
-    def run (self, picking_list, verbose = False):
+
+    def run (self, verbose = False):
         """ Main execution method for the ACO """
-        
-        # Initialise the picking list
-        self.picking_list = list(picking_list)
-        # Initialize the best
-        self.best = list(self.picking_list)
-        random.shuffle(self.best)
-        self.vbest = _compute_distance (self.best, self.distances)
+        max_iter, max_noimp, _new_solution = self.max_iter, self.max_noimp, self._new_solution
+        source, target = self.source, self.target 
+        grid, times = self.grid, self.times
+        history = self.history
 
-        # Start the effective execution
+        ants = (Ant(times.shape, source, target) for _ in range(max_iter))
+        best_ant = None 
+        best_time = float('inf')
         start = time.time()
         noimp = 0
-        for i in range (self.max_iter):
-            # Build a new solution
-            new_sol, vnew_sol = self._new_solution ()
-            # Eventually evaporate pheromone
+
+
+        for i, ant in enumerate(ants):
+
+            error = _new_solution(ant)
+            if error:
+                continue
+
+            # Evaporate if required at each iteration
             if self.evaporate is True:
                 self._evap ()
-            # Eventually update best, iterations with no improvement
-            # and computations needed to find the best.
-            if vnew_sol < self.vbest:
-                self.best, self.vbest = new_sol, vnew_sol
+
+            if ant.time < best_time:
+                # Update the best
+                best_ant, best_time = ant, ant.time
+
+                # Evaporate if only required when a new best is found 
                 if self.evaporate is False:
                     self._evap ()
-                self._update ()
+                
+                # Update pheromone
+                self._update(best_ant)
+
+                # Update metrics
                 noimp = 0
                 self.computations = i
+            
             else:
+                # Check if stopping for rare improvement
                 noimp += 1
                 if noimp > self.max_noimp:
                     break
+            
+            history.append(best_time)
 
-            # Update history
-            self.history.append(self.vbest)
-            # Logs
-            if verbose is True and i % self.print_every == 0:
-                print('Epoch: ', i, ', Best: ', self.vbest)
-
-        # Set computational time
+            if verbose and i % 100 == 0:
+                grid.plot(path=tuple(best_ant.path))
+        
         self.computational_time = time.time() - start
-        # Return the best solution found
-        return self.best, self.vbest
+        self.best_ant = best_ant 
+        self.best_time = best_time 
+
+        return tuple(best_ant.path), best_time
