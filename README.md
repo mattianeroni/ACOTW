@@ -1,5 +1,6 @@
-# AntColony
-Implementation and research on Ant Colony Optimisation algorithm.
+# Ant Colony Optimization with Time Windows 
 
-The results, experiments, and algorithms in this repository are described in details and presented in the following paper:
-*Mattia Neroni (2022) Ant Colony Optimization with Warm-up. Algorithms MDPI.*
+An implementation of Ant Colony Optimization algorithm for path finding in a scenario where more Automated Guided Vehicles (AGV) share the same paths.
+
+The considered scenario force the ACO to consider time windows in which paths and positions of interest are free or occupied by other vehicles.
+
