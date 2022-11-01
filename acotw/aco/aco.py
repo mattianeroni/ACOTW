@@ -107,7 +107,7 @@ class AntColony:
         As in the Max-Min Ant System, we update the pheromone only on the best 
         path, when a new best path is found.
         """
-        self.pheromone += ant.pathmap * (self.Q / ant.time )
+        self.pheromone += ant.pathmap * ( self.Q / ant.time )
 
 
 
@@ -177,14 +177,20 @@ class AntColony:
         # Move useful variables to the stack
         grid, G, tabu = self.grid, self.grid.G, set(ant.path) 
 
-        # Choose next node
+        # Define possible next nodes
+        options = {i : self._probability(ant, i) for _, i in G.edges(ant.cnode) if i not in tabu}
 
-        options = tuple(i for _, i in G.edges(ant.cnode) if i not in tabu)
-        probs = np.array([self._probability(ant, i) for i in options])
-
+        # If the ant stacks, we interrupt the process and go to the next ant
         if len(options) == 0:
             return None
-        return random.choices( options, weights=probs / probs.sum(), k=1)[0]
+        # Choose the next node
+        cumulate, total_probability = 0.0, sum(options.values()) 
+        r = random.random() 
+        for node, probability in options.items():
+            cumulate += probability / total_probability
+            if r < cumulate:
+                return node
+        
 
 
     def _new_solution (self, ant):
@@ -192,37 +198,44 @@ class AntColony:
         grid, times = self.grid, self.grid.times 
         cnode, target, _next_node = ant.source, ant.target, self._next_node
 
+        # Until the considered ant do not reach the target or an error is raised...
         while cnode != target:
-
+            
+            # Pick next node
             nextnode = _next_node(ant)
             if not nextnode:
                 return True
 
+            # Update ant's path, position, and travel times
             ant.path.append(nextnode)
+            ant.pathmap[cnode, nextnode] = 1
 
             arrival_at_nextnode = ant.time + times[cnode, nextnode]
             window = next((i for i in grid.G.nodes[nextnode]["windows"] if i[0] <= arrival_at_nextnode and i[1] > arrival_at_nextnode), (0, 0))
 
             ant.time = max(arrival_at_nextnode, window[1])
             cnode = nextnode
+
         return False
 
 
 
     def run (self, verbose = False):
         """ Main execution method for the ACO """
+        # Move useful variables to the stack for a little more performant execution
         max_iter, max_noimp, _new_solution = self.max_iter, self.max_noimp, self._new_solution
         source, target = self.source, self.target 
         grid, times = self.grid, self.times
         history = self.history
 
+        # Initialize variables and ants
         ants = (Ant(times.shape, source, target) for _ in range(max_iter))
         best_ant = None 
         best_time = float('inf')
         start = time.time()
         noimp = 0
 
-
+        # Main exploration loop
         for i, ant in enumerate(ants):
 
             error = _new_solution(ant)
@@ -249,18 +262,20 @@ class AntColony:
                 self.computations = i
             
             else:
-                # Check if stopping for rare improvement
+                # Check if stopping for no improvement since many iterations
                 noimp += 1
                 if noimp > self.max_noimp:
                     break
             
             history.append(best_time)
 
+            # Print the best path every 100 iterations if verbose
             if verbose and i % 100 == 0:
                 grid.plot(path=tuple(best_ant.path))
         
-        self.computational_time = time.time() - start
+        # Save best solution found and computational time
+        self.computational_time = round(time.time() - start, 3)
         self.best_ant = best_ant 
         self.best_time = best_time 
-
+        # Return best path and solution cost
         return tuple(best_ant.path), best_time

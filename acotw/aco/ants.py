@@ -16,6 +16,7 @@ class Ant:
         """
         self.path = collections.deque((source,))
         self.pathmap = np.zeros(mapsize).astype(np.int32)
+        self.windows = collections.deque()
         self.source = source 
         self.target = target 
         self.time = 0.0 
@@ -31,15 +32,3 @@ class Ant:
         if len(self.path) > 1:
             return self.path[-2]
         return None
-
-    def add (self, node):
-        """ Append a new node to the path """
-        cnode = self.cnode 
-        self.path.append(node)
-        self.pathmap[cnode, node] = 1
-
-    def __iadd__(self, node):
-        """ Append a new node to the path using += operator """
-        cnode = self.cnode 
-        self.path.append(node)
-        self.pathmap[cnode, node] = 1
