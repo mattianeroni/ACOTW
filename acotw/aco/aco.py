@@ -4,6 +4,7 @@ import time
 import operator
 import collections 
 import itertools
+import matplotlib.pyplot as plt 
 
 from acotw.utils.distances import euclidean_from_ids
 from acotw.utils.angle import compute_turn 
@@ -92,6 +93,13 @@ class AntColony:
         self.computations = 0
         self.computational_time = 0.0
 
+
+    def plot_history (self):
+        """ Plot evolution of best solution found """
+        plt.plot(self.history)
+        plt.xlabel("Iterations")
+        plt.ylabel("Best solution")
+        plt.show()
 
 
     def _evap (self):
@@ -212,8 +220,13 @@ class AntColony:
 
             arrival_at_nextnode = ant.time + times[cnode, nextnode]
             window = next((i for i in grid.G.nodes[nextnode]["windows"] if i[0] <= arrival_at_nextnode and i[1] > arrival_at_nextnode), (0, 0))
-
             ant.time = max(arrival_at_nextnode, window[1])
+
+            # Create the time window for the cnode
+            # NOTE: In this way we are not going to have a time window for the target node
+            _tw = ant.windows[-1] if len(ant.windows) > 0 else (0, 0)  # Time Windows of oldnode (i.e., the one visited before cnode)
+            ant.windows.append( (_tw[1], ant.time) )
+            
             cnode = nextnode
 
         return False
@@ -276,6 +289,6 @@ class AntColony:
         # Save best solution found and computational time
         self.computational_time = round(time.time() - start, 3)
         self.best_ant = best_ant 
-        self.best_time = best_time 
+        self.best_time = round(best_time, 3) 
         # Return best path and solution cost
-        return tuple(best_ant.path), best_time
+        return tuple(best_ant.path), round(best_time, 3)

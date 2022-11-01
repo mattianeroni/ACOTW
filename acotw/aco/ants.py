@@ -32,3 +32,4 @@ class Ant:
         if len(self.path) > 1:
             return self.path[-2]
         return None
+
