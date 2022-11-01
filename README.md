@@ -4,7 +4,7 @@ An implementation of Ant Colony Optimization algorithm for path finding in a sce
 
 The considered scenario force the ACO to consider time windows in which paths and positions of interest are free or occupied by other vehicles.
 
-<img src='./images/G.png'/>
+<img src='./images/G.png' width="70%" height="70%"  class="center"/>
 
 
-<img src='./images/Evolution.png' width="50%" height="50%"/>
+<img src='./images/Evolution.png' width="70%" height="70%" class="center"/>

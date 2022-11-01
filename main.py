@@ -25,6 +25,7 @@ if __name__ == '__main__':
     print("Best solution path: ", path)
     print("Iterations required: ", aco.computations)
     grid.plot(path=path)
+    
     plt.plot(aco.history)
     plt.xlabel("Iterations")
     plt.ylabel("Best solution")
