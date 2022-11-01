@@ -7,4 +7,4 @@ The considered scenario force the ACO to consider time windows in which paths an
 <img src='./images/G.png'/>
 
 
-<img src='./images/Evolution.png'/>
+<img src='./images/Evolution.png' width="50%" height="50%"/>
