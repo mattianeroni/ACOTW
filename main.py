@@ -14,7 +14,7 @@ if __name__ == '__main__':
         grid=grid, 
         source=0, 
         target=139,
-        pher_init = 0.1, ro = 0.5, Q = 5.0, alpha = 1.0, beta = 5.0, phi=8.0,
+        pher_init = 0.1, ro = 0.5, Q = 5.0, alpha = 1.0, beta = 5.0, phi=6.0,
         evaporate = False, max_iter = 1000, max_noimp = 500
     
     )
@@ -26,6 +26,8 @@ if __name__ == '__main__':
     print("Iterations required: ", aco.computations)
     grid.plot(path=path)
     plt.plot(aco.history)
+    plt.xlabel("Iterations")
+    plt.ylabel("Best solution")
     plt.show()
 
     print("A* best time is: ", astar_path_length(grid.G, 0, 139))
