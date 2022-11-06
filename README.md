@@ -1,6 +1,6 @@
 # Ant Colony Optimization with Time Windows 
 
-<img src='./images/agv.jpg' width="70%" height="70%" class="center"/>
+<p align='center'><img src='./images/agv.jpg' width="40%" height="40%"/></p>
 
 An implementation of Ant Colony Optimization algorithm for path finding in a scenario where more Automated Guided Vehicles (AGV) share the same paths.
 
